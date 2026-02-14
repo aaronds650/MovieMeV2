@@ -32,14 +32,28 @@ export default async function handler(req, res) {
     // Start transaction
     await pool.query('BEGIN');
 
-    // Upsert profile
-    await pool.query(`
-      INSERT INTO profiles (id, username, role) 
-      VALUES ($1, $2, $3) 
-      ON CONFLICT (id) DO NOTHING
-    `, [user_id, 'Alpha User', 'core']);
+    // Generate unique username from UUID (guaranteed unique)
+    const username = `alpha-${user_id.split('-')[0]}`;
 
-    // Upsert search limits
+    // Check if profile already exists
+    const existingProfile = await pool.query(
+      'SELECT id FROM profiles WHERE id = $1',
+      [user_id]
+    );
+
+    // Only insert profile if it doesn't exist
+    if (existingProfile.rows.length === 0) {
+      await pool.query(`
+        INSERT INTO profiles (id, username, role) 
+        VALUES ($1, $2, $3)
+      `, [user_id, username, 'core']);
+      
+      console.log(`Created new profile for user ${user_id} with username ${username}`);
+    } else {
+      console.log(`Profile already exists for user ${user_id}`);
+    }
+
+    // Upsert search limits (safe regardless of profile state)
     await pool.query(`
       INSERT INTO user_search_limits (user_id, searches_today, last_search_date) 
       VALUES ($1, 0, CURRENT_DATE) 
@@ -53,6 +67,7 @@ export default async function handler(req, res) {
     res.json({ 
       success: true, 
       user_id,
+      username,
       message: 'Alpha user initialized' 
     });
 
