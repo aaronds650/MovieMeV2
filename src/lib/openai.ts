@@ -149,93 +149,8 @@ Return in this format:
   ]
 }`;
 
-        // TEMPORARY: Mock API response for runtime stability
-        // TODO: Set up proper API routes for production
-        const mockApiResponse = {
-          ok: true,
-          json: async () => ({
-            recommendations: [
-              {
-                title: "Inception",
-                year: 2010,
-                description: "A mind-bending thriller about dreams within dreams, where a skilled thief enters people's subconscious to steal secrets.",
-                rating: "PG-13",
-                genres: ["Action", "Sci-Fi", "Thriller"],
-                cast: ["Leonardo DiCaprio", "Marion Cotillard", "Tom Hardy"],
-                director: "Christopher Nolan",
-                rottenTomatoesScore: 87,
-                imdbRating: 8.8,
-                runtime: 148,
-                matchReason: "Complex narrative structure and mind-bending themes similar to your favorites",
-                matchScore: 0.92,
-                similarToFavorites: favorites.slice(0, 2)
-              },
-              {
-                title: "The Matrix",
-                year: 1999,
-                description: "A computer hacker discovers reality is a simulation and joins a rebellion against the machines.",
-                rating: "R",
-                genres: ["Action", "Sci-Fi"],
-                cast: ["Keanu Reeves", "Laurence Fishburne", "Carrie-Anne Moss"],
-                director: "The Wachowskis",
-                rottenTomatoesScore: 88,
-                imdbRating: 8.7,
-                runtime: 136,
-                matchReason: "Revolutionary sci-fi concepts and philosophical themes",
-                matchScore: 0.89,
-                similarToFavorites: favorites.slice(0, 1)
-              },
-              {
-                title: "Blade Runner 2049",
-                year: 2017,
-                description: "A young blade runner discovers a secret that leads him to track down former blade runner Rick Deckard.",
-                rating: "R", 
-                genres: ["Sci-Fi", "Thriller", "Drama"],
-                cast: ["Ryan Gosling", "Harrison Ford", "Ana de Armas"],
-                director: "Denis Villeneuve",
-                rottenTomatoesScore: 88,
-                imdbRating: 8.0,
-                runtime: 164,
-                matchReason: "Visually stunning sci-fi with deep philosophical questions",
-                matchScore: 0.85,
-                similarToFavorites: favorites.slice(0, 1)
-              },
-              {
-                title: "Interstellar",
-                year: 2014,
-                description: "A team of explorers travel through a wormhole in space in an attempt to ensure humanity's survival.",
-                rating: "PG-13",
-                genres: ["Sci-Fi", "Drama", "Adventure"],
-                cast: ["Matthew McConaughey", "Anne Hathaway", "Jessica Chastain"],
-                director: "Christopher Nolan",
-                rottenTomatoesScore: 72,
-                imdbRating: 8.6,
-                runtime: 169,
-                matchReason: "Epic space exploration with emotional depth and scientific concepts",
-                matchScore: 0.83,
-                similarToFavorites: favorites.slice(0, 2)
-              },
-              {
-                title: "Ex Machina",
-                year: 2014,
-                description: "A young programmer is selected to participate in a breakthrough experiment in synthetic intelligence.",
-                rating: "R",
-                genres: ["Sci-Fi", "Thriller", "Drama"],
-                cast: ["Domhnall Gleeson", "Alicia Vikander", "Oscar Isaac"],
-                director: "Alex Garland",
-                rottenTomatoesScore: 92,
-                imdbRating: 7.7,
-                runtime: 108,
-                matchReason: "Intelligent AI thriller with psychological depth",
-                matchScore: 0.81,
-                similarToFavorites: favorites.slice(0, 1)
-              }
-            ].slice(0, remainingCount)
-          })
-        };
-
-        // Call serverless function instead of OpenAI directly (TEMPORARILY MOCKED)
-        const response = mockApiResponse; /* await fetch('/api/recommend', {
+        // Call serverless function instead of OpenAI directly
+        const response = await fetch('/api/recommend', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -248,7 +163,7 @@ Return in this format:
             temperature: 0.7,
             max_tokens: 4000
           })
-        }); */
+        });
 
         if (!response.ok) {
           throw new Error(`API request failed: ${response.status}`);

@@ -45,6 +45,11 @@ function validateRequestBody(body) {
 }
 
 module.exports = async (req, res) => {
+  // Environment guard
+  if (!process.env.OPENAI_API_KEY) {
+    return res.status(500).json({ error: 'Server configuration error' });
+  }
+
   // Set CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');

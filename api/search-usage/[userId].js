@@ -1,4 +1,10 @@
-import { sql } from '@vercel/postgres';
+import { Pool } from 'pg';
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false },
+  max: 5 // Small pool for serverless
+});
 
 const SEARCH_LIMITS = {
   core: 5,
@@ -6,6 +12,11 @@ const SEARCH_LIMITS = {
 };
 
 export default async function handler(req, res) {
+  // Environment guard
+  if (!process.env.DATABASE_URL) {
+    return res.status(500).json({ error: 'Server configuration error' });
+  }
+
   const { userId } = req.query;
 
   if (!userId) {
@@ -15,18 +26,17 @@ export default async function handler(req, res) {
   try {
     if (req.method === 'GET') {
       // Fetch current usage
-      const result = await sql`
-        SELECT search_count, last_reset 
-        FROM search_usage 
-        WHERE user_id = ${userId}
-      `;
+      const result = await pool.query(
+        'SELECT search_count, last_reset FROM search_usage WHERE user_id = $1',
+        [userId]
+      );
 
       if (result.rows.length === 0) {
         // Create new usage record
-        await sql`
-          INSERT INTO search_usage (user_id, search_count, last_reset) 
-          VALUES (${userId}, 0, NOW())
-        `;
+        await pool.query(
+          'INSERT INTO search_usage (user_id, search_count, last_reset) VALUES ($1, 0, NOW())',
+          [userId]
+        );
         return res.json({
           search_count: 0,
           last_reset: new Date().toISOString()
@@ -40,11 +50,10 @@ export default async function handler(req, res) {
 
       if (daysSinceReset >= 1) {
         // Reset counter if it's been 24 hours
-        await sql`
-          UPDATE search_usage 
-          SET search_count = 0, last_reset = NOW() 
-          WHERE user_id = ${userId}
-        `;
+        await pool.query(
+          'UPDATE search_usage SET search_count = 0, last_reset = NOW() WHERE user_id = $1',
+          [userId]
+        );
         return res.json({
           search_count: 0,
           last_reset: new Date().toISOString()
@@ -65,18 +74,17 @@ export default async function handler(req, res) {
       }
 
       // Get current usage
-      let result = await sql`
-        SELECT search_count, last_reset 
-        FROM search_usage 
-        WHERE user_id = ${userId}
-      `;
+      let result = await pool.query(
+        'SELECT search_count, last_reset FROM search_usage WHERE user_id = $1',
+        [userId]
+      );
 
       if (result.rows.length === 0) {
         // Create new usage record
-        await sql`
-          INSERT INTO search_usage (user_id, search_count, last_reset) 
-          VALUES (${userId}, 1, NOW())
-        `;
+        await pool.query(
+          'INSERT INTO search_usage (user_id, search_count, last_reset) VALUES ($1, 1, NOW())',
+          [userId]
+        );
         return res.json({
           search_count: 1,
           last_reset: new Date().toISOString()
@@ -87,11 +95,10 @@ export default async function handler(req, res) {
       const newCount = usage.search_count + 1;
 
       // Update search count
-      await sql`
-        UPDATE search_usage 
-        SET search_count = ${newCount} 
-        WHERE user_id = ${userId}
-      `;
+      await pool.query(
+        'UPDATE search_usage SET search_count = $1 WHERE user_id = $2',
+        [newCount, userId]
+      );
 
       return res.json({
         search_count: newCount,

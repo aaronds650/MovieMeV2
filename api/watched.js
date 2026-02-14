@@ -21,6 +21,10 @@ const generateId = () => {
 };
 
 module.exports = async (req, res) => {
+  // Environment guard
+  if (!process.env.DATABASE_URL) {
+    return res.status(500).json({ error: 'Server configuration error' });
+  }
   // Set CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
