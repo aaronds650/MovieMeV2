@@ -27,14 +27,14 @@ export default async function handler(req, res) {
     if (req.method === 'GET') {
       // Fetch current usage
       const result = await pool.query(
-        'SELECT search_count, last_reset FROM search_usage WHERE user_id = $1',
+        'SELECT searches_today, last_search_date FROM user_search_limits WHERE user_id = $1',
         [userId]
       );
 
       if (result.rows.length === 0) {
         // Create new usage record
         await pool.query(
-          'INSERT INTO search_usage (user_id, search_count, last_reset) VALUES ($1, 0, NOW())',
+          'INSERT INTO user_search_limits (user_id, searches_today, last_search_date) VALUES ($1, 0, NOW())',
           [userId]
         );
         return res.json({
@@ -44,14 +44,14 @@ export default async function handler(req, res) {
       }
 
       const usage = result.rows[0];
-      const lastReset = new Date(usage.last_reset);
+      const lastReset = new Date(usage.last_search_date);
       const now = new Date();
       const daysSinceReset = Math.floor((now.getTime() - lastReset.getTime()) / (1000 * 60 * 60 * 24));
 
       if (daysSinceReset >= 1) {
         // Reset counter if it's been 24 hours
         await pool.query(
-          'UPDATE search_usage SET search_count = 0, last_reset = NOW() WHERE user_id = $1',
+          'UPDATE user_search_limits SET searches_today = 0, last_search_date = NOW() WHERE user_id = $1',
           [userId]
         );
         return res.json({
@@ -61,8 +61,8 @@ export default async function handler(req, res) {
       }
 
       return res.json({
-        search_count: usage.search_count,
-        last_reset: usage.last_reset
+        search_count: usage.searches_today,
+        last_reset: usage.last_search_date
       });
 
     } else if (req.method === 'POST') {
@@ -75,14 +75,14 @@ export default async function handler(req, res) {
 
       // Get current usage
       let result = await pool.query(
-        'SELECT search_count, last_reset FROM search_usage WHERE user_id = $1',
+        'SELECT searches_today, last_search_date FROM user_search_limits WHERE user_id = $1',
         [userId]
       );
 
       if (result.rows.length === 0) {
         // Create new usage record
         await pool.query(
-          'INSERT INTO search_usage (user_id, search_count, last_reset) VALUES ($1, 1, NOW())',
+          'INSERT INTO user_search_limits (user_id, searches_today, last_search_date) VALUES ($1, 1, NOW())',
           [userId]
         );
         return res.json({
@@ -92,17 +92,17 @@ export default async function handler(req, res) {
       }
 
       const usage = result.rows[0];
-      const newCount = usage.search_count + 1;
+      const newCount = usage.searches_today + 1;
 
       // Update search count
       await pool.query(
-        'UPDATE search_usage SET search_count = $1 WHERE user_id = $2',
+        'UPDATE user_search_limits SET searches_today = $1 WHERE user_id = $2',
         [newCount, userId]
       );
 
       return res.json({
         search_count: newCount,
-        last_reset: usage.last_reset
+        last_reset: usage.last_search_date
       });
 
     } else {
