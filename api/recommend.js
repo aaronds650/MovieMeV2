@@ -1,10 +1,5 @@
 const OpenAI = require('openai');
 
-// Initialize OpenAI with server-side key
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
 // Simple rate limiting storage (in production, use Redis or database)
 const rateLimitMap = new Map();
 const RATE_LIMIT_WINDOW = 60000; // 1 minute
@@ -53,6 +48,11 @@ module.exports = async (req, res) => {
   if (!process.env.OPENAI_API_KEY) {
     return res.status(500).json({ error: 'Server configuration error' });
   }
+
+  // Initialize OpenAI inside handler
+  const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  });
 
   // Set CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
