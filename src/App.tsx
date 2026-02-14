@@ -2,8 +2,6 @@ import React from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { AuthForm } from './components/auth/AuthForm';
-import { PasswordReset } from './components/auth/PasswordReset';
 import { HomePage } from './components/pages/HomePage';
 import { ConversationFlow } from './components/conversation/ConversationFlow';
 import { WatchlistPage } from './components/pages/WatchlistPage';
@@ -12,7 +10,7 @@ import { PrivacyPolicy } from './components/pages/PrivacyPolicy';
 import { TermsOfService } from './components/pages/TermsOfService';
 import { usePageViewTracker } from './hooks/usePageViewTracker';
 
-// Validate required environment variables (Using PostgreSQL)
+// Validate required environment variables
 const requiredEnvVars = [
   'VITE_TMDB_API_KEY'
 ];
@@ -23,14 +21,21 @@ if (missingEnvVars.length > 0) {
   throw new Error(`Missing required environment variables: ${missingEnvVars.join(', ')}`);
 }
 
-function PrivateRoute({ children }: { children: React.ReactNode }) {
-  const { session } = useAuth();
-  return session ? <>{children}</> : <Navigate to="/login" />;
-}
-
-function PublicRoute({ children }: { children: React.ReactNode }) {
-  const { session } = useAuth();
-  return !session ? <>{children}</> : <Navigate to="/" />;
+function AlphaRoute({ children }: { children: React.ReactNode }) {
+  const { session, loading } = useAuth();
+  
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-indigo-50 to-white flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
+          <p className="text-gray-600">Setting up your alpha session...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  return session ? <>{children}</> : <div>Alpha session setup failed</div>;
 }
 
 function AppRoutes() {
@@ -38,53 +43,25 @@ function AppRoutes() {
 
   return (
     <Routes>
-      <Route path="/login" element={
-        <PublicRoute>
-          <div className="min-h-screen bg-gradient-to-b from-indigo-50 to-white flex flex-col">
-            <header className="py-6 px-4 border-b bg-white/50 backdrop-blur-sm">
-              <div className="max-w-7xl mx-auto flex justify-between items-center">
-                <h1 className="text-2xl font-bold text-indigo-600">MovieMe</h1>
-              </div>
-            </header>
-            <main className="flex-1 flex items-center justify-center p-4">
-              <AuthForm />
-            </main>
-          </div>
-        </PublicRoute>
-      } />
-      <Route path="/reset-password" element={
-        <PublicRoute>
-          <div className="min-h-screen bg-gradient-to-b from-indigo-50 to-white flex flex-col">
-            <header className="py-6 px-4 border-b bg-white/50 backdrop-blur-sm">
-              <div className="max-w-7xl mx-auto flex justify-between items-center">
-                <h1 className="text-2xl font-bold text-indigo-600">MovieMe</h1>
-              </div>
-            </header>
-            <main className="flex-1 flex items-center justify-center p-4">
-              <PasswordReset />
-            </main>
-          </div>
-        </PublicRoute>
-      } />
       <Route path="/" element={
-        <PrivateRoute>
+        <AlphaRoute>
           <HomePage />
-        </PrivateRoute>
+        </AlphaRoute>
       } />
       <Route path="/conversation" element={
-        <PrivateRoute>
+        <AlphaRoute>
           <ConversationFlow />
-        </PrivateRoute>
+        </AlphaRoute>
       } />
       <Route path="/watchlist" element={
-        <PrivateRoute>
+        <AlphaRoute>
           <WatchlistPage />
-        </PrivateRoute>
+        </AlphaRoute>
       } />
       <Route path="/watched" element={
-        <PrivateRoute>
+        <AlphaRoute>
           <WatchedMoviesPage />
-        </PrivateRoute>
+        </AlphaRoute>
       } />
       <Route path="/privacy" element={<PrivacyPolicy />} />
       <Route path="/terms" element={<TermsOfService />} />

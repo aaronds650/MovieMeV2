@@ -103,7 +103,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const alphaSession = {
           user: {
             id: userId,
-            email: `alpha-${userId.split('-')[0]}@example.com`
+            email: `alpha-${userId.split('-')[0]}@movieme.app`
           }
         };
         
