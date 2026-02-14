@@ -1,22 +1,5 @@
-// Frontend compatibility layer - all database calls go through API endpoints
-
-// Mock Supabase client structure for compatibility
-export const supabase = {
-  auth: {
-    getUser: async () => {
-      // For development, return mock user
-      return {
-        data: {
-          user: {
-            id: 'dev-user-1',
-            email: 'dev@example.com'
-          }
-        },
-        error: null
-      };
-    }
-  }
-};
+// Frontend API layer - all database calls go through Neon API endpoints
+import { getCurrentUserId } from './auth';
 
 // Frontend database functions - all calls go through API endpoints
 export async function addToWatchlist(movieData: {
@@ -26,8 +9,8 @@ export async function addToWatchlist(movieData: {
   poster_url: string | null;
   overview: string;
 }) {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('User not authenticated');
+  const userId = getCurrentUserId();
+  if (!userId) throw new Error('User not authenticated');
 
   try {
     const response = await fetch('/api/watchlist', {
@@ -35,7 +18,7 @@ export async function addToWatchlist(movieData: {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         action: 'add',
-        user_id: user.id,
+        user_id: userId,
         movieData
       })
     });
@@ -51,15 +34,15 @@ export async function addToWatchlist(movieData: {
 }
 
 export async function removeFromWatchlist(tmdbId: number) {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('User not authenticated');
+  const userId = getCurrentUserId();
+  if (!userId) throw new Error('User not authenticated');
 
   const response = await fetch('/api/watchlist', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       action: 'remove',
-      user_id: user.id,
+      user_id: userId,
       tmdb_id: tmdbId
     })
   });
@@ -68,11 +51,11 @@ export async function removeFromWatchlist(tmdbId: number) {
 }
 
 export async function isInWatchlist(tmdbId: number): Promise<boolean> {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return false;
+  const userId = getCurrentUserId();
+  if (!userId) return false;
 
   try {
-    const response = await fetch(`/api/watchlist?user_id=${user.id}&tmdb_id=${tmdbId}`);
+    const response = await fetch(`/api/watchlist?user_id=${userId}&tmdb_id=${tmdbId}`);
     if (!response.ok) return false;
     const data = await response.json();
     return data.exists;
@@ -82,11 +65,11 @@ export async function isInWatchlist(tmdbId: number): Promise<boolean> {
 }
 
 export async function getWatchlist() {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('User not authenticated');
+  const userId = getCurrentUserId();
+  if (!userId) throw new Error('User not authenticated');
 
   try {
-    const response = await fetch(`/api/watchlist?user_id=${user.id}`);
+    const response = await fetch(`/api/watchlist?user_id=${userId}`);
     if (!response.ok) return [];
     return await response.json();
   } catch (error: any) {
@@ -103,8 +86,8 @@ export async function markAsWatched(movieData: {
   rating?: number;
   review?: string;
 }) {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('User not authenticated');
+  const userId = getCurrentUserId();
+  if (!userId) throw new Error('User not authenticated');
 
   try {
     const response = await fetch('/api/watched', {
@@ -112,7 +95,7 @@ export async function markAsWatched(movieData: {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         action: 'add',
-        user_id: user.id,
+        user_id: userId,
         movieData
       })
     });
@@ -131,15 +114,15 @@ export async function markAsWatched(movieData: {
 }
 
 export async function removeFromWatched(tmdbId: number) {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('User not authenticated');
+  const userId = getCurrentUserId();
+  if (!userId) throw new Error('User not authenticated');
 
   const response = await fetch('/api/watched', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       action: 'remove',
-      user_id: user.id,
+      user_id: userId,
       tmdb_id: tmdbId
     })
   });
@@ -148,11 +131,11 @@ export async function removeFromWatched(tmdbId: number) {
 }
 
 export async function isWatched(tmdbId: number): Promise<boolean> {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return false;
+  const userId = getCurrentUserId();
+  if (!userId) return false;
 
   try {
-    const response = await fetch(`/api/watched?user_id=${user.id}&tmdb_id=${tmdbId}`);
+    const response = await fetch(`/api/watched?user_id=${userId}&tmdb_id=${tmdbId}`);
     if (!response.ok) return false;
     const data = await response.json();
     return data.exists;
@@ -162,11 +145,11 @@ export async function isWatched(tmdbId: number): Promise<boolean> {
 }
 
 export async function getWatchedMovies() {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('User not authenticated');
+  const userId = getCurrentUserId();
+  if (!userId) throw new Error('User not authenticated');
 
   try {
-    const response = await fetch(`/api/watched?user_id=${user.id}`);
+    const response = await fetch(`/api/watched?user_id=${userId}`);
     if (!response.ok) return [];
     return await response.json();
   } catch (error: any) {
