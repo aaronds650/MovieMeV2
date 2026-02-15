@@ -50,9 +50,11 @@ Create a `.env` file in the root directory with the following variables:
 ```env
 VITE_SUPABASE_URL=your_supabase_url
 VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
-VITE_OPENAI_API_KEY=your_openai_api_key
+OPENAI_API_KEY=your_openai_api_key
 VITE_TMDB_API_KEY=your_tmdb_api_key
 ```
+
+**Note**: The OpenAI API key does NOT use the `VITE_` prefix since it's used in serverless functions, not the frontend.
 
 4. Set up the database:
 - Run the Supabase migrations in the `supabase/migrations/` directory
