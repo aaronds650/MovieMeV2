@@ -1,5 +1,6 @@
 import { Pool } from 'pg';
 import { authenticateRequest } from './auth.js';
+import { ensureProfileExists } from './helpers/profileSync.js';
 
 // PostgreSQL connection pool
 const pool = new Pool({
@@ -47,6 +48,9 @@ export default async function handler(req, res) {
       const { tmdb_id } = req.query;
       const userId = auth.userId;
 
+      // Ensure profile exists in Neon
+      await ensureProfileExists(userId, auth.user?.email);
+
       if (tmdb_id) {
         // Check if specific movie is in watchlist
         const result = await query(
@@ -73,6 +77,9 @@ export default async function handler(req, res) {
 
       const { action, movieData, tmdb_id } = req.body;
       const userId = auth.userId;
+
+      // Ensure profile exists in Neon
+      await ensureProfileExists(userId, auth.user?.email);
 
       if (action === 'add') {
         if (!movieData) {
