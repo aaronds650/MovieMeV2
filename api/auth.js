@@ -2,11 +2,10 @@
 import { createClient } from '@supabase/supabase-js';
 
 // Create Supabase client for JWT verification
-const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabaseUrl = process.env.VITE_SUPABASE_URL;
 
 // For JWT verification, we don't need the service key, just the anon key
-const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
+const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY;
 
 let supabase;
 if (supabaseUrl && supabaseAnonKey) {
