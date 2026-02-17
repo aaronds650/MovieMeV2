@@ -1,4 +1,4 @@
-const { Pool } = require('pg');
+import { Pool } from 'pg';
 
 // PostgreSQL connection pool
 const pool = new Pool({
@@ -20,11 +20,12 @@ const generateId = () => {
   });
 };
 
-module.exports = async (req, res) => {
+export default async function handler(req, res) {
   // Environment guard
   if (!process.env.DATABASE_URL) {
     return res.status(500).json({ error: 'Server configuration error' });
   }
+  
   // Set CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -110,4 +111,4 @@ module.exports = async (req, res) => {
     
     return res.status(500).json({ error: 'Internal server error' });
   }
-};
+}
