@@ -23,7 +23,10 @@ export async function addToWatchlist(movieData: {
       })
     });
 
-    if (!response.ok) throw new Error('Failed to add to watchlist');
+    if (!response.ok) {
+      if (response.status === 409) return null; // Already exists
+      throw new Error('Failed to add to watchlist');
+    }
     return await response.json();
   } catch (error: any) {
     if (error.message.includes('unique')) {

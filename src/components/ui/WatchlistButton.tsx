@@ -47,14 +47,19 @@ export function WatchlistButton({
         await removeFromWatchlist(tmdbId);
         setIsWatchlisted(false);
       } else {
-        await addToWatchlist({
+        const result = await addToWatchlist({
           tmdb_id: tmdbId,
           title,
           year,
           poster_url: posterUrl,
           overview
         });
-        setIsWatchlisted(true);
+        if (result !== null) {
+          setIsWatchlisted(true);
+        } else {
+          // Movie already in watchlist (409 conflict)
+          setIsWatchlisted(true);
+        }
       }
     } catch (err) {
       console.error('Error updating watchlist:', err);

@@ -47,14 +47,19 @@ export function WatchedButton({
         await removeFromWatched(tmdbId);
         setIsMarkedWatched(false);
       } else {
-        await markAsWatched({
+        const result = await markAsWatched({
           tmdb_id: tmdbId,
           title,
           year,
           poster_url: posterUrl,
           overview
         });
-        setIsMarkedWatched(true);
+        if (result !== null) {
+          setIsMarkedWatched(true);
+        } else {
+          // Movie already watched (409 conflict)
+          setIsMarkedWatched(true);
+        }
       }
     } catch (err) {
       console.error('Error updating watched status:', err);
