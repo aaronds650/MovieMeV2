@@ -1,16 +1,25 @@
-// Alpha authentication utilities - Neon only
+// Supabase authentication utilities
+import { supabase, getCurrentUser, getCurrentUserId as getSupabaseUserId } from './supabaseClient';
 
-// Get current user ID from localStorage (used by API calls)
-export function getCurrentUserId(): string | null {
-  const userId = localStorage.getItem('movieme_user_id');
-  if (!userId) return null;
-  
-  // Validate UUID format
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  return uuidRegex.test(userId) ? userId : null;
+// Get current user ID from Supabase session
+export async function getCurrentUserId(): Promise<string | null> {
+  return await getSupabaseUserId();
 }
 
 // Check if user is authenticated
-export function isAuthenticated(): boolean {
-  return getCurrentUserId() !== null;
+export async function isAuthenticated(): Promise<boolean> {
+  const user = await getCurrentUser();
+  return user !== null;
+}
+
+// Get current user object
+export async function getUser() {
+  return await getCurrentUser();
+}
+
+// Auth state listener
+export function onAuthStateChange(callback: (user: any) => void) {
+  return supabase.auth.onAuthStateChange((event, session) => {
+    callback(session?.user || null);
+  });
 }

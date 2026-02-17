@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Film, Popcorn, Sparkles, ListFilter, Clock, Star, Zap, LogOut, Crown } from 'lucide-react';
 import { cn } from '../../lib/utils';
 // Removed Supabase import
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../context/AuthProvider';
 import { logUserActivity } from '../../lib/activity';
 
 const features = [
@@ -31,19 +31,21 @@ const features = [
 
 export function HomePage() {
   const navigate = useNavigate();
-  const { userProfile } = useAuth();
+  const { user, signOut } = useAuth();
   const [showUpgradeMessage, setShowUpgradeMessage] = useState(false);
 
   const handleSignOut = async () => {
-    // Mock sign out - redirect to login
-    window.location.href = '/login';
-    navigate('/login');
+    try {
+      await signOut();
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
   };
 
   const handleUpgradeClick = async () => {
     // Log the premium upgrade click
     await logUserActivity('premium_upgrade_click', {
-      currentRole: userProfile?.role,
+      currentRole: 'core',
       source: 'homepage'
     });
 
@@ -57,15 +59,9 @@ export function HomePage() {
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <h1 className="text-2xl font-bold text-indigo-600">MovieMe</h1>
           <div className="flex items-center gap-4">
-            {userProfile?.role === 'core' && (
-              <button
-                onClick={handleUpgradeClick}
-                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg shadow-md hover:shadow-lg transition-all duration-200 text-sm font-medium"
-              >
-                <Crown className="h-4 w-4" />
-                Upgrade to Premium
-              </button>
-            )}
+            <span className="text-sm text-gray-600">
+              Welcome, {user?.email}
+            </span>
             <button
               onClick={handleSignOut}
               className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900"

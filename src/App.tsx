@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './context/AuthContext';
+import { AuthProvider, useAuth } from './context/AuthProvider';
+import { AuthPage } from './components/auth/AuthPage';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { HomePage } from './components/pages/HomePage';
 import { ConversationFlow } from './components/conversation/ConversationFlow';
@@ -21,21 +22,21 @@ if (missingEnvVars.length > 0) {
   throw new Error(`Missing required environment variables: ${missingEnvVars.join(', ')}`);
 }
 
-function AlphaRoute({ children }: { children: React.ReactNode }) {
-  const { session, loading } = useAuth();
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
   
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-indigo-50 to-white flex items-center justify-center">
         <div className="text-center space-y-4">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
-          <p className="text-gray-600">Setting up your alpha session...</p>
+          <p className="text-gray-600">Loading...</p>
         </div>
       </div>
     );
   }
   
-  return session ? <>{children}</> : <div>Alpha session setup failed</div>;
+  return user ? <>{children}</> : <AuthPage />;
 }
 
 function AppRoutes() {
@@ -44,24 +45,24 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={
-        <AlphaRoute>
+        <ProtectedRoute>
           <HomePage />
-        </AlphaRoute>
+        </ProtectedRoute>
       } />
       <Route path="/conversation" element={
-        <AlphaRoute>
+        <ProtectedRoute>
           <ConversationFlow />
-        </AlphaRoute>
+        </ProtectedRoute>
       } />
       <Route path="/watchlist" element={
-        <AlphaRoute>
+        <ProtectedRoute>
           <WatchlistPage />
-        </AlphaRoute>
+        </ProtectedRoute>
       } />
       <Route path="/watched" element={
-        <AlphaRoute>
+        <ProtectedRoute>
           <WatchedMoviesPage />
-        </AlphaRoute>
+        </ProtectedRoute>
       } />
       <Route path="/privacy" element={<PrivacyPolicy />} />
       <Route path="/terms" element={<TermsOfService />} />

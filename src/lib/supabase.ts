@@ -1,5 +1,14 @@
-// Frontend API layer - all database calls go through Neon API endpoints
-import { getCurrentUserId } from './auth';
+// Frontend API layer - all database calls go through Neon API endpoints with JWT auth
+import { getCurrentUserId, getAuthToken } from './supabaseClient';
+
+// Helper to get authenticated headers
+async function getAuthHeaders(): Promise<HeadersInit> {
+  const token = await getAuthToken();
+  return {
+    'Content-Type': 'application/json',
+    ...(token && { 'Authorization': `Bearer ${token}` })
+  };
+}
 
 // Frontend database functions - all calls go through API endpoints
 export async function addToWatchlist(movieData: {
@@ -9,22 +18,22 @@ export async function addToWatchlist(movieData: {
   poster_url: string | null;
   overview: string;
 }) {
-  const userId = getCurrentUserId();
+  const userId = await getCurrentUserId();
   if (!userId) throw new Error('User not authenticated');
 
   try {
     const response = await fetch('/api/watchlist', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await getAuthHeaders(),
       body: JSON.stringify({
         action: 'add',
-        user_id: userId,
         movieData
       })
     });
 
     if (!response.ok) {
       if (response.status === 409) return null; // Already exists
+      if (response.status === 401) throw new Error('Authentication required');
       throw new Error('Failed to add to watchlist');
     }
     return await response.json();
@@ -37,28 +46,33 @@ export async function addToWatchlist(movieData: {
 }
 
 export async function removeFromWatchlist(tmdbId: number) {
-  const userId = getCurrentUserId();
+  const userId = await getCurrentUserId();
   if (!userId) throw new Error('User not authenticated');
 
   const response = await fetch('/api/watchlist', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: await getAuthHeaders(),
     body: JSON.stringify({
       action: 'remove',
-      user_id: userId,
       tmdb_id: tmdbId
     })
   });
 
-  if (!response.ok) throw new Error('Failed to remove from watchlist');
+  if (!response.ok) {
+    if (response.status === 401) throw new Error('Authentication required');
+    throw new Error('Failed to remove from watchlist');
+  }
 }
 
 export async function isInWatchlist(tmdbId: number): Promise<boolean> {
-  const userId = getCurrentUserId();
+  const userId = await getCurrentUserId();
   if (!userId) return false;
 
   try {
-    const response = await fetch(`/api/watchlist?user_id=${userId}&tmdb_id=${tmdbId}`);
+    const token = await getAuthToken();
+    const headers: HeadersInit = token ? { 'Authorization': `Bearer ${token}` } : {};
+    
+    const response = await fetch(`/api/watchlist?tmdb_id=${tmdbId}`, { headers });
     if (!response.ok) return false;
     const data = await response.json();
     return data.exists;
@@ -68,11 +82,14 @@ export async function isInWatchlist(tmdbId: number): Promise<boolean> {
 }
 
 export async function getWatchlist() {
-  const userId = getCurrentUserId();
+  const userId = await getCurrentUserId();
   if (!userId) throw new Error('User not authenticated');
 
   try {
-    const response = await fetch(`/api/watchlist?user_id=${userId}`);
+    const token = await getAuthToken();
+    const headers: HeadersInit = token ? { 'Authorization': `Bearer ${token}` } : {};
+    
+    const response = await fetch(`/api/watchlist`, { headers });
     if (!response.ok) return [];
     return await response.json();
   } catch (error: any) {
@@ -89,22 +106,22 @@ export async function markAsWatched(movieData: {
   rating?: number;
   review?: string;
 }) {
-  const userId = getCurrentUserId();
+  const userId = await getCurrentUserId();
   if (!userId) throw new Error('User not authenticated');
 
   try {
     const response = await fetch('/api/watched', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await getAuthHeaders(),
       body: JSON.stringify({
         action: 'add',
-        user_id: userId,
         movieData
       })
     });
 
     if (!response.ok) {
       if (response.status === 409) return null; // Already exists
+      if (response.status === 401) throw new Error('Authentication required');
       throw new Error('Failed to mark as watched');
     }
     return await response.json();
@@ -117,28 +134,33 @@ export async function markAsWatched(movieData: {
 }
 
 export async function removeFromWatched(tmdbId: number) {
-  const userId = getCurrentUserId();
+  const userId = await getCurrentUserId();
   if (!userId) throw new Error('User not authenticated');
 
   const response = await fetch('/api/watched', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: await getAuthHeaders(),
     body: JSON.stringify({
       action: 'remove',
-      user_id: userId,
       tmdb_id: tmdbId
     })
   });
 
-  if (!response.ok) throw new Error('Failed to remove from watched');
+  if (!response.ok) {
+    if (response.status === 401) throw new Error('Authentication required');
+    throw new Error('Failed to remove from watched');
+  }
 }
 
 export async function isWatched(tmdbId: number): Promise<boolean> {
-  const userId = getCurrentUserId();
+  const userId = await getCurrentUserId();
   if (!userId) return false;
 
   try {
-    const response = await fetch(`/api/watched?user_id=${userId}&tmdb_id=${tmdbId}`);
+    const token = await getAuthToken();
+    const headers: HeadersInit = token ? { 'Authorization': `Bearer ${token}` } : {};
+    
+    const response = await fetch(`/api/watched?tmdb_id=${tmdbId}`, { headers });
     if (!response.ok) return false;
     const data = await response.json();
     return data.exists;
@@ -148,11 +170,14 @@ export async function isWatched(tmdbId: number): Promise<boolean> {
 }
 
 export async function getWatchedMovies() {
-  const userId = getCurrentUserId();
+  const userId = await getCurrentUserId();
   if (!userId) throw new Error('User not authenticated');
 
   try {
-    const response = await fetch(`/api/watched?user_id=${userId}`);
+    const token = await getAuthToken();
+    const headers: HeadersInit = token ? { 'Authorization': `Bearer ${token}` } : {};
+    
+    const response = await fetch(`/api/watched`, { headers });
     if (!response.ok) return [];
     return await response.json();
   } catch (error: any) {

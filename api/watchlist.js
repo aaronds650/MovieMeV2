@@ -1,4 +1,5 @@
 import { Pool } from 'pg';
+import { authenticateRequest } from './auth.js';
 
 // PostgreSQL connection pool
 const pool = new Pool({
@@ -29,7 +30,7 @@ export default async function handler(req, res) {
   // Set CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
@@ -37,36 +38,41 @@ export default async function handler(req, res) {
 
   try {
     if (req.method === 'GET') {
-      // Check if movie is in watchlist OR get full watchlist
-      const { user_id, tmdb_id } = req.query;
-      
-      if (!user_id) {
-        return res.status(400).json({ error: 'user_id required' });
+      // Authenticate user
+      const auth = await authenticateRequest(req);
+      if (!auth.authenticated) {
+        return res.status(401).json({ error: auth.error });
       }
+
+      const { tmdb_id } = req.query;
+      const userId = auth.userId;
 
       if (tmdb_id) {
         // Check if specific movie is in watchlist
         const result = await query(
           `SELECT COUNT(*) as count FROM watchlist WHERE user_id = $1 AND tmdb_id = $2`,
-          [user_id, parseInt(tmdb_id)]
+          [userId, parseInt(tmdb_id)]
         );
         return res.json({ exists: parseInt(result.rows[0].count) > 0 });
       } else {
         // Get full watchlist
         const result = await query(
           `SELECT * FROM watchlist WHERE user_id = $1 ORDER BY created_at DESC`,
-          [user_id]
+          [userId]
         );
         return res.json(result.rows);
       }
     }
 
     if (req.method === 'POST') {
-      const { action, user_id, movieData, tmdb_id } = req.body;
-
-      if (!user_id) {
-        return res.status(400).json({ error: 'user_id required' });
+      // Authenticate user
+      const auth = await authenticateRequest(req);
+      if (!auth.authenticated) {
+        return res.status(401).json({ error: auth.error });
       }
+
+      const { action, movieData, tmdb_id } = req.body;
+      const userId = auth.userId;
 
       if (action === 'add') {
         if (!movieData) {
@@ -77,7 +83,7 @@ export default async function handler(req, res) {
         const result = await query(
           `INSERT INTO watchlist (id, user_id, tmdb_id, title, year, poster_url, overview)
            VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-          [id, user_id, movieData.tmdb_id, movieData.title, movieData.year, 
+          [id, userId, movieData.tmdb_id, movieData.title, movieData.year, 
            movieData.poster_url, movieData.overview]
         );
         
@@ -91,7 +97,7 @@ export default async function handler(req, res) {
 
         await query(
           `DELETE FROM watchlist WHERE user_id = $1 AND tmdb_id = $2`,
-          [user_id, tmdb_id]
+          [userId, tmdb_id]
         );
         
         return res.json({ success: true });
