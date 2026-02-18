@@ -22,9 +22,16 @@ const generateId = () => {
   });
 };
 
+// Structured error logging
+const logError = (endpoint, userId, errorCode, errorMessage, details = {}) => {
+  const shortUserId = userId ? userId.substring(0, 8) : 'unknown';
+  console.error(`[${endpoint}] user:${shortUserId} error:${errorCode} ${errorMessage}`, details);
+};
+
 export default async function handler(req, res) {
   // Environment guard
   if (!process.env.DATABASE_URL) {
+    logError('watched', null, 'CONFIG_ERROR', 'DATABASE_URL not configured');
     return res.status(500).json({ error: 'Server configuration error' });
   }
   
@@ -42,6 +49,7 @@ export default async function handler(req, res) {
       // Authenticate user
       const auth = await authenticateRequest(req);
       if (!auth.authenticated) {
+        logError('watched-get', null, 'AUTH_FAILED', auth.error);
         return res.status(401).json({ error: auth.error });
       }
 
@@ -72,6 +80,7 @@ export default async function handler(req, res) {
       // Authenticate user
       const auth = await authenticateRequest(req);
       if (!auth.authenticated) {
+        logError('watched-post', null, 'AUTH_FAILED', auth.error);
         return res.status(401).json({ error: auth.error });
       }
 
@@ -83,6 +92,7 @@ export default async function handler(req, res) {
 
       if (action === 'add') {
         if (!movieData) {
+          logError('watched-add', userId, 'VALIDATION_ERROR', 'movieData required');
           return res.status(400).json({ error: 'movieData required' });
         }
 
@@ -93,6 +103,7 @@ export default async function handler(req, res) {
         );
 
         if (parseInt(checkResult.rows[0].count) > 0) {
+          logError('watched-add', userId, 'DUPLICATE_ENTRY', 'Movie already watched');
           return res.status(409).json({ error: 'Movie already watched' });
         }
 
@@ -116,6 +127,7 @@ export default async function handler(req, res) {
 
       if (action === 'remove') {
         if (!tmdb_id) {
+          logError('watched-remove', userId, 'VALIDATION_ERROR', 'tmdb_id required');
           return res.status(400).json({ error: 'tmdb_id required' });
         }
 
@@ -133,11 +145,17 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
 
   } catch (error) {
-    console.error('Watched API Error:', error);
+    const userId = req.body?.userId || req.query?.userId;
     
     if (error.code === '23505') {
+      logError('watched', userId, 'DUPLICATE_ENTRY', 'Movie already watched', { code: error.code });
       return res.status(409).json({ error: 'Movie already watched' });
     }
+    
+    logError('watched', userId, error.code || 'INTERNAL_ERROR', error.message, { 
+      stack: error.stack,
+      method: req.method 
+    });
     
     return res.status(500).json({ error: 'Internal server error' });
   }

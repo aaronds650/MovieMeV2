@@ -1,5 +1,11 @@
 const OpenAI = require('openai');
 
+// Structured error logging
+const logError = (endpoint, userId, errorCode, errorMessage, details = {}) => {
+  const shortUserId = userId ? userId.substring(0, 8) : 'unknown';
+  console.error(`[${endpoint}] user:${shortUserId} error:${errorCode} ${errorMessage}`, details);
+};
+
 // Simple rate limiting storage (in production, use Redis or database)
 const rateLimitMap = new Map();
 const RATE_LIMIT_WINDOW = 60000; // 1 minute
@@ -46,6 +52,7 @@ function validateRequestBody(body) {
 module.exports = async (req, res) => {
   // Environment guard
   if (!process.env.OPENAI_API_KEY) {
+    logError('recommend', null, 'CONFIG_ERROR', 'OPENAI_API_KEY not configured');
     return res.status(500).json({ error: 'Server configuration error' });
   }
 
@@ -73,6 +80,7 @@ module.exports = async (req, res) => {
     // Basic rate limiting
     const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress || 'unknown';
     if (!checkRateLimit(ip)) {
+      logError('recommend', null, 'RATE_LIMITED', 'Rate limit exceeded', { ip });
       return res.status(429).json({ error: 'Rate limit exceeded. Please try again later.' });
     }
     
@@ -114,18 +122,26 @@ module.exports = async (req, res) => {
     return res.status(200).json({ content });
     
   } catch (error) {
-    console.error('API Error:', error);
+    const userId = req.body?.userId || req.headers?.['user-id'];
     
-    // Return safe error messages
+    // Return safe error messages with structured logging
     if (error.message.includes('API key')) {
+      logError('recommend', userId, 'API_KEY_ERROR', 'AI service configuration error');
       return res.status(500).json({ error: 'AI service configuration error' });
     }
     if (error.message.includes('rate limit')) {
+      logError('recommend', userId, 'OPENAI_RATE_LIMITED', 'OpenAI rate limit exceeded');
       return res.status(429).json({ error: 'Service temporarily unavailable. Please try again later.' });
     }
     if (error.message.includes('quota')) {
+      logError('recommend', userId, 'QUOTA_EXCEEDED', 'OpenAI quota exceeded');
       return res.status(503).json({ error: 'Service temporarily unavailable. Please try again later.' });
     }
+    
+    logError('recommend', userId, error.code || 'INTERNAL_ERROR', error.message, { 
+      stack: error.stack,
+      method: req.method 
+    });
     
     return res.status(500).json({ error: 'Internal server error' });
   }

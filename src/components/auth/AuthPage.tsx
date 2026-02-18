@@ -14,7 +14,31 @@ export function AuthPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resetSent, setResetSent] = useState(false);
+  const [signupSent, setSignupSent] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+
+  const handleResendConfirmation = async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: email,
+        options: {
+          emailRedirectTo: 'https://moviemeapp.com'
+        }
+      });
+      
+      if (error) {
+        setError(error.message);
+      }
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,6 +77,8 @@ export function AuthPage() {
         
         if (error) {
           setError(error.message);
+        } else {
+          setSignupSent(true);
         }
       }
     } catch (err: any) {
@@ -107,6 +133,40 @@ export function AuthPage() {
                 <ArrowLeft className="h-4 w-4" />
                 Back to Sign In
               </button>
+            </div>
+          ) : signupSent ? (
+            <div className="text-center space-y-4">
+              <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-lg">
+                <p className="font-medium mb-2">Check your email to confirm your account before signing in</p>
+                <p className="text-sm">We sent a confirmation link to {email}</p>
+                <p className="text-xs mt-2 text-blue-600">You cannot sign in until you confirm your email address.</p>
+              </div>
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  onClick={handleResendConfirmation}
+                  disabled={loading}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-200 disabled:opacity-50"
+                >
+                  {loading ? 'Sending...' : 'Resend confirmation email'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSignupSent(false);
+                    setIsLogin(true);
+                    setError(null);
+                    setEmail('');
+                    setName('');
+                    setPassword('');
+                    setConfirmPassword('');
+                  }}
+                  className="inline-flex items-center gap-2 text-purple-600 hover:text-purple-700 font-medium"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  Back to Sign In
+                </button>
+              </div>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -223,7 +283,7 @@ export function AuthPage() {
             </form>
           )}
 
-          {!resetSent && (
+          {!resetSent && !signupSent && (
             <div className="text-center space-y-2">
               {isForgotPassword ? (
                 <button
