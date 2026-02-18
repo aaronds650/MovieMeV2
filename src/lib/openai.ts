@@ -88,14 +88,25 @@ export async function getMovieRecommendations(
 
     while (retryCount < MAX_RETRIES && validRecommendations.length < MOVIES_PER_BATCH) {
       try {
-        // Create a set of all titles to exclude
-        const titlesToExclude = new Set([
+        // Create efficient exclusion list with smart truncation for performance
+        const allExclusions = [
           ...previousRecommendations,
           ...favorites,
           ...excludeTitles,
           ...validRecommendations.map(r => r.title),
           ...Array.from(watchedTitles)
-        ].map(title => title.toLowerCase()));
+        ].map(title => title.toLowerCase());
+        
+        const titlesToExclude = new Set(allExclusions);
+        
+        // Smart exclusion list optimization: limit to most relevant excludes for performance
+        const maxExclusions = 50; // Performance optimization limit
+        const prioritizedExclusions = [
+          ...validRecommendations.map(r => r.title), // Current batch movies (highest priority)
+          ...Array.from(watchedTitles).slice(-20), // Recent watched movies 
+          ...favorites, // User favorites
+          ...excludeTitles.slice(-15) // Recent excludes from previous batches
+        ].slice(0, maxExclusions);
 
         // Convert timeframe IDs to year ranges
         const timeframeRanges = timeframes.includes('any') ? 'any release year' : timeframes.map(tf => {
@@ -111,6 +122,7 @@ export async function getMovieRecommendations(
 
         const remainingCount = MOVIES_PER_BATCH - validRecommendations.length;
 
+        // Performance-optimized prompt with strategic exclusions
         const prompt = `Recommend EXACTLY ${remainingCount} unique movies based on:
 1. ${moods.length > 0 ? `Moods: ${moods.join(', ')}` : `Genres: ${genres.join(', ')}`}
 2. ${moods.length > 0 ? '' : `Subgenres: ${subgenres.join(', ')}`}
@@ -124,8 +136,7 @@ Weighting factors for recommendations:
 - Critical Acclaim: ${ACCLAIMED_WEIGHT * 100}%
 - Time Period Match: ${TIMEFRAME_WEIGHT * 100}%
 
-CRITICAL: Exclude these movies (user has already watched or selected them):
-${Array.from(titlesToExclude).join(', ')}
+AVOID these recent selections: ${prioritizedExclusions.join(', ')}
 
 Return in this format:
 {
@@ -215,10 +226,10 @@ Return in this format:
                 return false;
               }
 
-              // Validate time period if specific timeframes are selected
+              // Flexible time period validation with fallback tolerance
               if (!timeframes.includes('any')) {
                 const movieYear = movie.year;
-                const isInTimeframe = timeframes.some(tf => {
+                let isInTimeframe = timeframes.some(tf => {
                   switch (tf) {
                     case '1970-1989': return movieYear >= 1967 && movieYear <= 1992;
                     case '1990-1999': return movieYear >= 1987 && movieYear <= 2002;
@@ -228,6 +239,24 @@ Return in this format:
                     default: return false;
                   }
                 });
+
+                // Fallback: if we have very few valid movies, expand timeframe tolerance
+                if (!isInTimeframe && validRecommendations.length < 2) {
+                  isInTimeframe = timeframes.some(tf => {
+                    switch (tf) {
+                      case '1970-1989': return movieYear >= 1965 && movieYear <= 1995; // Expanded range
+                      case '1990-1999': return movieYear >= 1985 && movieYear <= 2005;
+                      case '2000-2009': return movieYear >= 1995 && movieYear <= 2015;
+                      case '2010-2019': return movieYear >= 2005 && movieYear <= 2025;
+                      case '2020-present': return movieYear >= 2015;
+                      default: return false;
+                    }
+                  });
+                  
+                  if (isInTimeframe) {
+                    console.log('Applied fallback timeframe tolerance for:', movie.title, movieYear);
+                  }
+                }
 
                 if (!isInTimeframe) {
                   console.warn('Skipping movie outside timeframe:', movie.title, movieYear);

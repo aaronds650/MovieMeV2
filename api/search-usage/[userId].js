@@ -1,4 +1,5 @@
 import { Pool } from 'pg';
+import { authenticateRequest } from '../auth.js';
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -11,16 +12,60 @@ const SEARCH_LIMITS = {
   premium: 30
 };
 
+// Rate limiting for rapid-fire protection
+const rateLimitMap = new Map();
+const RATE_LIMIT_WINDOW = 60000; // 1 minute
+const MAX_REQUESTS_PER_WINDOW = 3; // Max 3 search count requests per minute
+
+function checkRateLimit(userId) {
+  const now = Date.now();
+  const userRequests = rateLimitMap.get(userId) || [];
+  
+  // Remove old requests outside the window
+  const recentRequests = userRequests.filter(timestamp => now - timestamp < RATE_LIMIT_WINDOW);
+  
+  if (recentRequests.length >= MAX_REQUESTS_PER_WINDOW) {
+    return false; // Rate limit exceeded
+  }
+  
+  // Add current request
+  recentRequests.push(now);
+  rateLimitMap.set(userId, recentRequests);
+  
+  return true; // Request allowed
+}
+
 export default async function handler(req, res) {
   // Environment guard
   if (!process.env.DATABASE_URL) {
     return res.status(500).json({ error: 'Server configuration error' });
   }
 
-  const { userId } = req.query;
+  // Set CORS headers
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
 
-  if (!userId) {
-    return res.status(400).json({ error: 'User ID is required' });
+  // Authenticate user
+  const auth = await authenticateRequest(req);
+  if (!auth.authenticated) {
+    return res.status(401).json({ error: auth.error });
+  }
+
+  const { userId } = req.query;
+  
+  // Enforce user ID matches authenticated user (prevent bypassing via URL manipulation)
+  if (userId !== auth.userId) {
+    return res.status(403).json({ error: 'Access denied: User ID mismatch' });
+  }
+
+  // Rate limiting for rapid-fire abuse prevention
+  if (!checkRateLimit(userId)) {
+    return res.status(429).json({ error: 'Too many requests. Please try again in a moment.' });
   }
 
   try {
@@ -66,44 +111,90 @@ export default async function handler(req, res) {
       });
 
     } else if (req.method === 'POST') {
-      // Increment search count
+      // Increment search count with enhanced enforcement
       const { increment } = req.body;
       
       if (!increment) {
         return res.status(400).json({ error: 'Invalid request' });
       }
 
-      // Get current usage
-      let result = await pool.query(
-        'SELECT searches_today, last_search_date FROM user_search_limits WHERE user_id = $1',
-        [userId]
-      );
+      // Get user role for limit determination
+      const userRole = auth.user?.user_metadata?.role || 'core';
+      const dailyLimit = SEARCH_LIMITS[userRole] || SEARCH_LIMITS.core;
 
-      if (result.rows.length === 0) {
-        // Create new usage record
-        await pool.query(
-          'INSERT INTO user_search_limits (user_id, searches_today, last_search_date) VALUES ($1, 1, NOW())',
+      // Transaction-based increment to prevent race conditions and bypassing
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+
+        // Get current usage with row lock to prevent concurrent updates
+        let result = await client.query(
+          'SELECT searches_today, last_search_date FROM user_search_limits WHERE user_id = $1 FOR UPDATE',
           [userId]
         );
+
+        let currentCount = 0;
+        let lastReset = new Date();
+
+        if (result.rows.length === 0) {
+          // Create new usage record
+          await client.query(
+            'INSERT INTO user_search_limits (user_id, searches_today, last_search_date) VALUES ($1, 0, NOW())',
+            [userId]
+          );
+        } else {
+          const usage = result.rows[0];
+          lastReset = new Date(usage.last_search_date);
+          currentCount = usage.searches_today;
+
+          // Check if reset is needed (24 hour window)
+          const now = new Date();
+          const hoursSinceReset = (now.getTime() - lastReset.getTime()) / (1000 * 60 * 60);
+
+          if (hoursSinceReset >= 24) {
+            // Reset counter
+            await client.query(
+              'UPDATE user_search_limits SET searches_today = 0, last_search_date = NOW() WHERE user_id = $1',
+              [userId]
+            );
+            currentCount = 0;
+            lastReset = new Date();
+          }
+        }
+
+        // Enforce hard limit - cannot be bypassed
+        if (currentCount >= dailyLimit) {
+          await client.query('ROLLBACK');
+          return res.status(429).json({ 
+            error: `Daily search limit of ${dailyLimit} reached. Please try again tomorrow.`,
+            search_count: currentCount,
+            limit: dailyLimit,
+            last_reset: lastReset
+          });
+        }
+
+        // Increment with atomic operation
+        const newCount = currentCount + 1;
+        await client.query(
+          'UPDATE user_search_limits SET searches_today = $1, last_search_date = COALESCE(last_search_date, NOW()) WHERE user_id = $2',
+          [newCount, userId]
+        );
+
+        await client.query('COMMIT');
+
         return res.json({
-          search_count: 1,
-          last_reset: new Date().toISOString()
+          search_count: newCount,
+          limit: dailyLimit,
+          remaining: Math.max(0, dailyLimit - newCount),
+          last_reset: lastReset
         });
+
+      } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+      } finally {
+        client.release();
       }
-
-      const usage = result.rows[0];
-      const newCount = usage.searches_today + 1;
-
-      // Update search count
-      await pool.query(
-        'UPDATE user_search_limits SET searches_today = $1 WHERE user_id = $2',
-        [newCount, userId]
-      );
-
-      return res.json({
-        search_count: newCount,
-        last_reset: usage.last_search_date
-      });
 
     } else {
       res.setHeader('Allow', ['GET', 'POST']);
