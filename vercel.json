@@ -6,7 +6,23 @@
   },
   "rewrites": [
     {
-      "source": "/((?!api).*)",
+      "source": "/",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/dashboard",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/watchlist",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/watched",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/((?!api)(?!.*\\.).*)",
       "destination": "/index.html"
     }
   ]
