@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthProvider';
 import { AuthPage } from './components/auth/AuthPage';
+import { ResetPasswordPage } from './components/auth/ResetPasswordPage';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { HomePage } from './components/pages/HomePage';
 import { ConversationFlow } from './components/conversation/ConversationFlow';
@@ -64,6 +65,7 @@ function AppRoutes() {
           <WatchedMoviesPage />
         </ProtectedRoute>
       } />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/privacy" element={<PrivacyPolicy />} />
       <Route path="/terms" element={<TermsOfService />} />
       <Route path="*" element={<Navigate to="/" />} />

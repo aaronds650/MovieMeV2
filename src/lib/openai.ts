@@ -1,4 +1,4 @@
-// import { getWatchedMovies } from './supabase'; // Temporarily disabled for runtime stability
+import { getWatchedMovies } from './supabase';
 
 // Removed client-side OpenAI - now using serverless API
 
@@ -82,9 +82,8 @@ export async function getMovieRecommendations(
     let retryCount = 0;
     let validRecommendations: MovieRecommendation[] = [];
 
-    // Get watched movies to exclude - temporarily disabled for runtime stability
-    // const watchedMovies = await getWatchedMovies();
-    const watchedMovies: any[] = []; // Temporary stub
+    // Get watched movies to exclude
+    const watchedMovies = await getWatchedMovies();
     const watchedTitles = new Set(watchedMovies.map(m => m.title.toLowerCase()));
 
     while (retryCount < MAX_RETRIES && validRecommendations.length < MOVIES_PER_BATCH) {

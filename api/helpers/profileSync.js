@@ -12,7 +12,7 @@ const pool = new Pool({
  * Ensures a profile exists in Neon for the given Supabase user ID
  * Creates one if it doesn't exist
  */
-export async function ensureProfileExists(userId, userEmail = null) {
+export async function ensureProfileExists(userId, user = null) {
   try {
     // Check if profile exists
     const existingProfile = await pool.query(
@@ -26,16 +26,26 @@ export async function ensureProfileExists(userId, userEmail = null) {
     }
 
     // Profile doesn't exist, create it
-    const username = userEmail 
-      ? `user_${userEmail.split('@')[0]}_${userId.substring(0, 8)}`
-      : `user_${userId.substring(0, 8)}`;
+    const userEmail = user?.email;
+    const userName = user?.user_metadata?.full_name || user?.user_metadata?.first_name;
+    
+    let username;
+    if (userName) {
+      // Use first name + ID for username
+      const firstName = userName.split(' ')[0].toLowerCase();
+      username = `${firstName}_${userId.substring(0, 8)}`;
+    } else if (userEmail) {
+      username = `user_${userEmail.split('@')[0]}_${userId.substring(0, 8)}`;
+    } else {
+      username = `user_${userId.substring(0, 8)}`;
+    }
 
     await pool.query(
       'INSERT INTO profiles (id, username, role) VALUES ($1, $2, $3)',
       [userId, username, 'core']
     );
 
-    console.log(`Auto-created profile for Supabase user ${userId}`);
+    console.log(`Auto-created profile for Supabase user ${userId} with username ${username}`);
     return { success: true, created: true };
 
   } catch (error) {

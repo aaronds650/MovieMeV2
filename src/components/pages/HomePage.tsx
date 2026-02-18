@@ -60,7 +60,7 @@ export function HomePage() {
           <h1 className="text-2xl font-bold text-indigo-600">MovieMe</h1>
           <div className="flex items-center gap-4">
             <span className="text-sm text-gray-600">
-              Welcome, {user?.email}
+              Welcome, {user?.user_metadata?.first_name || user?.email?.split('@')[0] || 'User'}
             </span>
             <button
               onClick={handleSignOut}

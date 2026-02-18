@@ -63,7 +63,13 @@ export function WatchlistButton({
       }
     } catch (err) {
       console.error('Error updating watchlist:', err);
-      setError(err instanceof Error ? err.message : 'Failed to update watchlist');
+      if (err instanceof Error && err.message.includes('Authentication required')) {
+        setError('Please sign in to add movies to your watchlist');
+      } else if (err instanceof Error && err.message.includes('Network')) {
+        setError('Connection issue. Please check your internet and try again');
+      } else {
+        setError('Unable to update watchlist. Please try again');
+      }
     } finally {
       setIsLoading(false);
     }

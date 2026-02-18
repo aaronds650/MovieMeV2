@@ -63,7 +63,13 @@ export function WatchedButton({
       }
     } catch (err) {
       console.error('Error updating watched status:', err);
-      setError(err instanceof Error ? err.message : 'Failed to update watched status');
+      if (err instanceof Error && err.message.includes('Authentication required')) {
+        setError('Please sign in to mark movies as watched');
+      } else if (err instanceof Error && err.message.includes('Network')) {
+        setError('Connection issue. Please check your internet and try again');
+      } else {
+        setError('Unable to update watched status. Please try again');
+      }
     } finally {
       setIsLoading(false);
     }

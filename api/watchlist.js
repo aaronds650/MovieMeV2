@@ -49,7 +49,7 @@ export default async function handler(req, res) {
       const userId = auth.userId;
 
       // Ensure profile exists in Neon
-      await ensureProfileExists(userId, auth.user?.email);
+      await ensureProfileExists(userId, auth.user);
 
       if (tmdb_id) {
         // Check if specific movie is in watchlist
@@ -79,7 +79,7 @@ export default async function handler(req, res) {
       const userId = auth.userId;
 
       // Ensure profile exists in Neon
-      await ensureProfileExists(userId, auth.user?.email);
+      await ensureProfileExists(userId, auth.user);
 
       if (action === 'add') {
         if (!movieData) {
