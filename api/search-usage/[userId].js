@@ -111,18 +111,14 @@ export default async function handler(req, res) {
       });
 
     } else if (req.method === 'POST') {
-      // Increment search count with enhanced enforcement
+      // Increment search count (tracking only, no limits enforced for launch validation)
       const { increment } = req.body;
       
       if (!increment) {
         return res.status(400).json({ error: 'Invalid request' });
       }
 
-      // Get user role for limit determination
-      const userRole = auth.user?.user_metadata?.role || 'core';
-      const dailyLimit = SEARCH_LIMITS[userRole] || SEARCH_LIMITS.core;
-
-      // Transaction-based increment to prevent race conditions and bypassing
+      // Transaction-based increment to prevent race conditions
       const client = await pool.connect();
       try {
         await client.query('BEGIN');
@@ -162,18 +158,7 @@ export default async function handler(req, res) {
           }
         }
 
-        // Enforce hard limit - cannot be bypassed
-        if (currentCount >= dailyLimit) {
-          await client.query('ROLLBACK');
-          return res.status(429).json({ 
-            error: `Daily search limit of ${dailyLimit} reached. Please try again tomorrow.`,
-            search_count: currentCount,
-            limit: dailyLimit,
-            last_reset: lastReset
-          });
-        }
-
-        // Increment with atomic operation
+        // Increment with atomic operation (tracking only, no enforcement)
         const newCount = currentCount + 1;
         await client.query(
           'UPDATE user_search_limits SET searches_today = $1, last_search_date = COALESCE(last_search_date, NOW()) WHERE user_id = $2',
@@ -184,8 +169,6 @@ export default async function handler(req, res) {
 
         return res.json({
           search_count: newCount,
-          limit: dailyLimit,
-          remaining: Math.max(0, dailyLimit - newCount),
           last_reset: lastReset
         });
 

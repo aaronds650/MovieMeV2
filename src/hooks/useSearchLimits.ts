@@ -24,12 +24,11 @@ export function useSearchLimits() {
       }
 
       const result = await response.json();
-      const limit = userProfile?.role === 'premium' ? SEARCH_LIMITS.premium : SEARCH_LIMITS.core;
       
       setUsage({
         searchCount: result.search_count,
         lastReset: new Date(result.last_reset),
-        remainingSearches: Math.max(0, limit - result.search_count)
+        remainingSearches: 999 // Always show available for launch validation
       });
     } catch (err) {
       console.error('Error fetching search usage:', err);
@@ -43,17 +42,7 @@ export function useSearchLimits() {
     try {
       if (!session?.user || !usage) return false;
 
-      const limit = userProfile?.role === 'premium' ? SEARCH_LIMITS.premium : SEARCH_LIMITS.core;
-      
-      if (usage.searchCount >= limit) {
-        throw new Error(
-          userProfile?.role === 'premium'
-            ? "You've reached your daily search threshold. Please try again tomorrow."
-            : "You've reached your daily search limit. Upgrade to get more recommendations!"
-        );
-      }
-
-      // Increment via API endpoint
+      // Increment via API endpoint (no limit enforcement for launch validation)
       const response = await fetch(`/api/search-usage/${session.user.id}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -69,7 +58,7 @@ export function useSearchLimits() {
       setUsage({
         ...usage,
         searchCount: data.search_count,
-        remainingSearches: Math.max(0, limit - data.search_count)
+        remainingSearches: 999 // Always show available for launch validation
       });
 
       return true;

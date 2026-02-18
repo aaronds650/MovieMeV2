@@ -248,19 +248,7 @@ export function MovieRecommendations({ selections, onReset, onBack, showBackButt
           Showing movie {currentIndex + 1} of {recommendations.length}
           {!noMoreAvailable && recommendations.length < MAX_TOTAL_MOVIES && ' (More available)'}
         </div>
-        {usage && (
-          <div className="text-sm text-gray-500 text-center">
-            {usage.remainingSearches > 0 ? (
-              <p>You have {usage.remainingSearches} searches remaining today</p>
-            ) : (
-              <p className="text-red-600">
-                {userProfile?.role === 'premium'
-                  ? "You've reached your daily search threshold. Please try again tomorrow."
-                  : "You've reached your daily search limit. Upgrade to get more recommendations!"}
-              </p>
-            )}
-          </div>
-        )}
+        {/* Daily limit messaging removed for launch validation */}
       </div>
 
       {/* Movie Actions Legend */}
