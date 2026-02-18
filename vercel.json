@@ -4,26 +4,14 @@
       "runtime": "nodejs18.x"
     }
   },
-  "rewrites": [
+  "routes": [
     {
-      "source": "/",
-      "destination": "/index.html"
+      "src": "/api/(.*)",
+      "dest": "/api/$1"
     },
     {
-      "source": "/dashboard",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/watchlist",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/watched",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/((?!api)(?!.*\\.).*)",
-      "destination": "/index.html"
+      "src": "/(.*)",
+      "dest": "/index.html"
     }
   ]
 }
